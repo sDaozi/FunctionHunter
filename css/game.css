@@ -1,0 +1,720 @@
+/* ========== 游戏界面 ========== */
+#screen-game, #screen-practice {
+  display: none;
+  padding: 0;
+  height: 100vh;
+  height: 100dvh;     /* 现代浏览器：动态 viewport，地址栏隐藏后自动占满 */
+  overflow: hidden;
+}
+#screen-game.active, #screen-practice.active {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;  /* HUD / 画布 / 函数库 / 输入栏 */
+}
+#screen-practice.active {
+  grid-template-rows: auto 1fr auto;  /* 头部 / 画布 / 输入栏 */
+}
+
+/* 顶部 HUD */
+.game-hud-top {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  padding: 14px 80px 10px;
+  background: linear-gradient(to bottom, var(--bg-deep), transparent);
+  z-index: 10;
+}
+.hud-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+}
+
+/* 小屏：HUD 更紧凑 */
+@media (max-width: 600px) {
+  .game-hud-top { gap: 12px; padding: 8px 60px 6px; }
+  .hud-stat { min-width: 60px; }
+  .hud-value { font-size: 18px; }
+  .hud-label { font-size: 9px; }
+  .input-bar { padding: 6px 12px 6px; }
+  .library-bar { padding: 2px 12px 1px; }
+  .lib-list { height: 26px; }
+  .lib-item { font-size: 10px; padding: 1px 6px 1px 4px; gap: 4px; }
+  #func-input, #practice-input { font-size: 12px; padding: 5px 10px; }
+  .input-prompt { font-size: 18px; }
+  .fire-btn { padding: 8px 14px; font-size: 12px; }
+  .preset-btn { padding: 8px 8px; font-size: 13px; }
+}
+
+/* 极窄屏 */
+@media (max-width: 420px) {
+  .hud-stat { min-width: 0; }
+  .lib-header { font-size: 9px; }
+  .lib-hint { display: none; }
+  .preset-menu { min-width: 200px; }
+  .preset-section { grid-template-columns: repeat(4, 1fr); }
+}
+.hud-label {
+  font-family: var(--font-orbitron);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+.hud-value {
+  font-family: var(--font-orbitron);
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--neon-cyan);
+  text-shadow: 0 0 12px rgba(93, 255, 214, 0.6);
+  line-height: 1;
+}
+.hud-value.combo {
+  color: var(--neon-orange);
+  text-shadow: 0 0 12px rgba(255, 170, 51, 0.6);
+}
+.hud-value.combo.boost {
+  animation: comboBoost 0.4s;
+}
+@keyframes comboBoost {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.4); }
+}
+.hud-value.lives {
+  color: var(--neon-pink);
+  font-family: var(--font-body);
+  font-size: 18px;
+  text-shadow: 0 0 12px rgba(255, 85, 119, 0.6);
+}
+.hud-value.ammo {
+  color: var(--neon-yellow);
+}
+
+/* 主画布 */
+#game-canvas, #practice-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 200px;  /* 防止小屏完全被压缩 */
+  display: block;
+  background: linear-gradient(180deg, #050a14 0%, #0a1424 100%);
+  cursor: grab;
+}
+#game-canvas:active, #practice-canvas:active {
+  cursor: grabbing;
+}
+
+/* 暂停按钮 */
+.pause-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 18px;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s;
+}
+.pause-btn:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+}
+
+/* 重置视野按钮 */
+.reset-view-btn {
+  position: absolute;
+  top: 16px;
+  right: 70px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  color: var(--text-main);
+  font-size: 22px;
+  z-index: 50;
+  backdrop-filter: blur(8px);
+  transition: all 0.2s;
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+.reset-view-btn:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  transform: rotate(90deg);
+}
+
+/* 输入栏（紧凑） */
+.input-bar {
+  background: linear-gradient(to top, var(--bg-deep), rgba(8, 17, 28, 0.7));
+  padding: 8px 20px 8px;
+  border-top: 1px solid var(--border-soft);
+  position: relative;
+  z-index: 5;
+}
+
+/* ============ 函数库栏（紧凑） ============ */
+.library-bar {
+  /* 已学函数 UI 已隐藏 —— 所有函数无个体冷却,统一改用全局 1 秒冷却 */
+  display: none !important;
+  background: linear-gradient(to bottom, transparent, rgba(8, 17, 28, 0.6));
+  padding: 4px 20px 2px;
+  z-index: 5;
+}
+.lib-header {
+  max-width: 900px;
+  margin: 0 auto 3px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  font-family: var(--font-orbitron);
+  letter-spacing: 1px;
+}
+.lib-title {
+  color: var(--neon-cyan);
+  font-weight: 700;
+}
+.lib-hint {
+  color: var(--text-dim);
+  font-size: 9px;
+}
+.lib-list {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  align-items: stretch;
+  height: 28px;
+}
+.lib-empty {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-style: italic;
+}
+
+.lib-item {
+  flex: 0 0 auto;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 2px 8px 2px 6px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--neon-cyan);
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+  white-space: nowrap;
+}
+.lib-item:hover:not(.cooldown) {
+  border-color: var(--neon-cyan);
+  background: rgba(93, 255, 214, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(93, 255, 214, 0.25);
+}
+.lib-item.cooldown {
+  cursor: not-allowed;
+  color: var(--text-dim);
+  border-color: var(--border-soft);
+}
+.lib-item.cooldown:hover { transform: none; }
+.lib-item.fired {
+  animation: libFire 0.4s;
+}
+@keyframes libFire {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); background: rgba(255, 224, 102, 0.25); }
+}
+
+/* 解锁进度覆盖层（已积累的「不同函数次数」/3 比例从左往右填充） */
+.lib-cooldown-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: rgba(93, 255, 214, 0.12);
+  border-right: 2px solid rgba(93, 255, 214, 0.5);
+  pointer-events: none;
+  transition: width 0.25s ease;
+}
+/* 进度环 + 剩余次数数字（取代旧的「秒数文字」） */
+.lib-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 1px;
+  flex: 0 0 auto;
+  z-index: 2;
+}
+.lib-ring svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.lib-ring-track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.1);
+  stroke-width: 2;
+}
+.lib-ring-bar {
+  fill: none;
+  stroke: var(--neon-pink);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.25s ease;
+  filter: drop-shadow(0 0 2px rgba(255, 85, 119, 0.6));
+}
+.lib-ring-num {
+  position: relative;
+  font-family: var(--font-orbitron);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--neon-pink);
+  line-height: 1;
+}
+.lib-prefix {
+  font-size: 10px;
+  color: var(--neon-yellow);
+  font-weight: 400;
+}
+.lib-basic {
+  font-size: 9px;
+  margin-right: 1px;
+  filter: drop-shadow(0 0 2px rgba(255, 224, 102, 0.6));
+}
+.lib-item.basic {
+  border-color: rgba(255, 224, 102, 0.4);
+  background: linear-gradient(135deg, rgba(255, 224, 102, 0.06), var(--bg-soft));
+}
+.lib-item.basic:hover {
+  border-color: var(--neon-yellow);
+  background: rgba(255, 224, 102, 0.12);
+}
+.lib-item.basic .lib-remove { display: none; }  /* 基础函数不可移除 */
+.lib-remove {
+  margin-left: 2px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 3px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  z-index: 2;
+  position: relative;
+}
+.lib-remove:hover {
+  color: var(--neon-pink);
+  background: rgba(255, 85, 119, 0.15);
+}
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.input-prompt {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--neon-yellow);
+  text-shadow: 0 0 8px rgba(255, 224, 102, 0.5);
+  flex: 0 0 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 50px;
+  opacity: 1;
+  transition: max-width 0.18s ease, opacity 0.15s ease, margin 0.18s ease;
+}
+.input-prompt.hidden {
+  max-width: 0;
+  opacity: 0;
+  margin: 0;
+  padding: 0;
+}
+#func-input, #practice-input {
+  flex: 1 1 auto;
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: var(--neon-cyan);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  transition: all 0.2s;
+  outline: none;
+}
+#func-input:focus, #practice-input:focus {
+  border-color: var(--neon-cyan);
+  background: rgba(93, 255, 214, 0.05);
+  box-shadow: 0 0 0 2px rgba(93, 255, 214, 0.2);
+}
+#func-input::placeholder, #practice-input::placeholder {
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.fire-btn {
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+  color: var(--bg-deep);
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.8px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(93, 255, 214, 0.3);
+}
+.fire-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.15);
+  box-shadow: 0 6px 16px rgba(93, 255, 214, 0.5);
+}
+.fire-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 练习沙盒里仍以 .input-hints 平铺展示（主游戏改用 .preset-menu 下拉了） */
+.input-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-width: 900px;
+  margin: 8px auto 0;
+  align-items: center;
+}
+
+/* —— 预设函数下拉（input-row 右侧） —— */
+.preset-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+.preset-btn {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  color: var(--text-soft);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.preset-btn:hover, .preset-btn.open {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  background: rgba(93, 255, 214, 0.08);
+}
+.preset-caret {
+  font-size: 10px;
+  transition: transform 0.15s;
+}
+.preset-btn.open .preset-caret {
+  transform: rotate(180deg);
+}
+.preset-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+  min-width: 240px;
+}
+.preset-menu.hidden {
+  display: none;
+}
+.preset-section-title {
+  font-family: var(--font-orbitron);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  padding-left: 2px;
+}
+.preset-section-title:first-child { margin-top: 0; }
+.preset-section {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.hint-tag {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  text-align: center;
+}
+.hint-tag:hover {
+  border-color: var(--neon-cyan);
+  color: var(--neon-cyan);
+  background: rgba(93, 255, 214, 0.1);
+}
+.hint-tag.geom {
+  color: var(--neon-yellow);
+  border-color: rgba(255, 224, 102, 0.3);
+}
+.hint-tag.geom:hover {
+  border-color: var(--neon-yellow);
+  background: rgba(255, 224, 102, 0.12);
+  color: var(--neon-yellow);
+}
+
+/* —— 错误信息行（独立、紧凑） —— */
+.error-row {
+  max-width: 900px;
+  margin: 4px auto 0;
+  min-height: 14px;
+  display: flex;
+  align-items: center;
+}
+.error-msg {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--neon-pink);
+}
+.error-msg:empty { display: none; }
+
+/* ============ 沙盒练习 ============ */
+.practice-header {
+  padding: 14px 16px 4px;
+  text-align: center;
+}
+.practice-header .screen-title {
+  margin: 28px 0 4px;
+  font-size: 22px;
+}
+.practice-header .screen-sub {
+  margin-bottom: 6px;
+}
+
+.practice-history {
+  max-width: 900px;
+  margin: 8px auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.history-item {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-soft);
+  padding: 4px 10px 4px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.history-item .swatch {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+.history-item .remove {
+  color: var(--text-dim);
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.history-item .remove:hover { color: var(--neon-pink); }
+
+/* 等级 HUD（含经验进度条） */
+.hud-value.level {
+  color: var(--neon-yellow);
+  text-shadow: 0 0 12px rgba(255, 224, 102, 0.55);
+}
+.hud-exp-bar {
+  margin-top: 4px;
+  width: 60px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 224, 102, 0.15);
+  overflow: hidden;
+}
+.hud-exp-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-yellow), var(--neon-orange));
+  border-radius: 2px;
+  transition: width 0.25s ease;
+  box-shadow: 0 0 8px rgba(255, 224, 102, 0.8);
+}
+
+/* connect 维持进度条 */
+.hud-combo-bar {
+  margin-top: 4px;
+  width: 60px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 170, 51, 0.15);
+  overflow: hidden;
+}
+.hud-combo-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-orange), var(--neon-pink));
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(255, 170, 51, 0.7);
+  transition: width 0.05s linear;
+}
+
+
+/* ============================================================
+ * 手机竖屏轻量优化（不重构布局，仅紧凑 HUD + 防按钮被截）
+ *   触发：窄屏 ≤ 600px 且 竖屏（高 > 宽）
+ * ============================================================ */
+@media (max-width: 600px) and (orientation: portrait) {
+  /* HUD 顶部：从两行合并到一行能装多少装多少；超出再换行 */
+  .game-hud-top {
+    gap: 4px 10px;
+    padding: 6px 50px 4px;
+  }
+  .hud-stat { min-width: 0; }
+  .hud-label { font-size: 8px; margin-bottom: 0; letter-spacing: 0.5px; }
+  .hud-value { font-size: 14px; }
+  .hud-exp-bar, .hud-combo-bar { width: 40px; height: 2px; margin-top: 1px; }
+
+  /* 退出 / 暂停 / 瞄准按钮缩小（竖屏空间紧） */
+  .game-back-btn { padding: 4px 8px; font-size: 11px; }
+  .game-pause-btn, .preset-btn { padding: 4px 8px; font-size: 11px; }
+
+  /* 输入栏：发射按钮始终可见（之前会被截掉） */
+  .input-bar {
+    padding: 5px 8px;
+    gap: 6px;
+    flex-wrap: nowrap;       /* 不换行，按比例压 */
+  }
+  #func-input {
+    font-size: 13px;
+    padding: 5px 8px;
+    min-width: 0;            /* 允许被压缩 */
+    flex: 1 1 auto;
+  }
+  .fire-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    flex: 0 0 auto;          /* 不被压缩 */
+    white-space: nowrap;
+  }
+  .input-prompt { font-size: 16px; }
+
+  /* 函数库栏紧凑 */
+  .library-bar { padding: 1px 8px; }
+  .lib-list { height: 22px; }
+  .lib-item { font-size: 10px; padding: 1px 5px 1px 3px; gap: 3px; }
+  .lib-header { font-size: 9px; }
+  .lib-hint { display: none; }
+
+  /* VIEW 重置浮窗：缩小避免遮挡 */
+  .view-info { font-size: 10px; padding: 4px 8px; }
+
+  /* canvas 取消最小高度限制，让 grid 1fr 充分扩展 */
+  #game-canvas { min-height: 0; }
+}
+
+/* 极窄屏幕（< 380px）进一步压缩 */
+@media (max-width: 380px) and (orientation: portrait) {
+  .hud-exp-bar, .hud-combo-bar { display: none; }
+  .hud-value { font-size: 13px; }
+  .hud-label { font-size: 8px; }
+}
+
+/* ============================================================
+ * 弹窗（图鉴 / 升级卡牌）：限高 + 滚动 + 防止按钮被截
+ * ============================================================ */
+@media (max-width: 600px) {
+  /* 图鉴卡牌：把内容区限高，按钮永远可见 */
+  #codex-overlay .codex-panel {
+    max-height: 92dvh;
+    max-height: 92vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 升级卡牌面板：同样限高滚动 */
+  .upgrade-panel {
+    max-height: 92dvh;
+    max-height: 92vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* 函数队列事件提示横幅 */
+.event-banner {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  padding: 10px 24px;
+  background: rgba(255, 102, 204, 0.15);
+  border: 2px solid var(--neon-pink);
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 1px;
+  box-shadow: 0 0 24px rgba(255, 102, 204, 0.5);
+  animation: eventBannerPulse 1.2s ease-in-out infinite;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.event-banner.hidden { display: none; }
+.event-banner-icon { color: var(--neon-pink); margin-right: 8px; font-size: 20px; }
+.event-banner-text b { color: var(--neon-yellow); font-size: 20px; }
+
+@keyframes eventBannerPulse {
+  0%, 100% { box-shadow: 0 0 24px rgba(255, 102, 204, 0.5); transform: translateX(-50%) scale(1); }
+  50% { box-shadow: 0 0 36px rgba(255, 102, 204, 0.85); transform: translateX(-50%) scale(1.04); }
+}
+
+@media (max-width: 600px) {
+  .event-banner { font-size: 14px; padding: 6px 14px; top: 60px; }
+  .event-banner-text b { font-size: 16px; }
+}
