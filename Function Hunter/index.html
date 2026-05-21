@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>函数猎手 · Function Hunter</title>
+<link rel="stylesheet" href="css/reset.css">
+<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/game.css">
+<script>
+  // 微信内置浏览器检测：在主页面渲染前打个标记，CSS 据此显示提示遮罩
+  (function() {
+    var ua = navigator.userAgent.toLowerCase();
+    if (ua.indexOf('micromessenger') !== -1) {
+      document.documentElement.classList.add('is-wechat');
+    }
+  })();
+</script>
+</head>
+<body>
+
+<!-- 微信浏览器提示遮罩：检测到 MicroMessenger 时显示 -->
+<div id="wechat-gate">
+  <div class="wechat-gate-icon">🌐</div>
+  <div class="wechat-gate-title">请在浏览器中打开</div>
+  <div class="wechat-gate-hint">
+    微信内置浏览器对游戏支持不佳<br><br>
+    点击右上角 <b>⋯</b><br>
+    选择 <b>「在浏览器打开」</b>
+  </div>
+  <div class="wechat-gate-arrow">↗</div>
+</div>
+
+<!-- 主菜单 -->
+<!-- 启动遮罩：首次打开时显示，点击后消失（顺便解锁浏览器音频 autoplay） -->
+<div id="start-gate">
+  <div class="start-gate-text">点击任意位置开始游戏</div>
+  <div class="start-gate-hint">使用 Win10 及以上系统，佩戴耳机游玩更佳</div>
+</div>
+
+<div id="screen-menu" class="screen active">
+  <div class="menu-bg-grid"></div>
+  <div class="menu-content">
+    <div class="logo-box">
+      <svg class="logo-svg" viewBox="0 0 200 80" width="220" height="88">
+        <!-- 坐标轴 -->
+        <line x1="20" y1="60" x2="180" y2="60" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+        <line x1="100" y1="10" x2="100" y2="70" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+        <!-- 抛物线 -->
+        <path d="M 30 60 Q 100 -10, 170 60" fill="none" stroke="url(#logoGrad)" stroke-width="3" stroke-linecap="round"/>
+        <!-- 目标 -->
+        <circle cx="170" cy="60" r="6" fill="#ff5577" opacity="0.85"/>
+        <circle cx="30" cy="60" r="6" fill="#ff5577" opacity="0.85"/>
+        <circle cx="100" cy="20" r="5" fill="#ffaa33" opacity="0.95"/>
+        <defs>
+          <linearGradient id="logoGrad" x1="0%" x2="100%">
+            <stop offset="0%" stop-color="#5dffd6"/>
+            <stop offset="100%" stop-color="#7a8cff"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+    <h1 class="game-title">函数猎手</h1>
+    <p class="game-tagline">FUNCTION&nbsp;HUNTER</p>
+    <p class="game-sub">用函数图像作为激光，精准猎杀敌人</p>
+
+    <div class="menu-buttons">
+      <button class="menu-btn primary" data-action="play">
+        <span class="btn-icon">🎯</span>
+        <span class="btn-body">
+          <span class="btn-text">开始游戏</span>
+          <span class="btn-sub">无限街机模式 · 越打越难</span>
+        </span>
+      </button>
+      <button class="menu-btn" data-action="codex">
+        <span class="btn-icon">📖</span>
+        <span class="btn-body">
+          <span class="btn-text">图鉴</span>
+          <span class="btn-sub">查看遭遇过的敌人详情</span>
+        </span>
+      </button>
+      <button class="menu-btn ghost" data-action="settings">
+        <span class="btn-icon">⚙️</span>
+        <span class="btn-body">
+          <span class="btn-text">设置</span>
+        </span>
+      </button>
+    </div>
+    
+    <div class="best-score">最高分 <b id="best-score">0</b></div>
+    
+    <p class="menu-credits">杭州学军中学教育集团文渊中学 · 自然语言编程创意实践 · 五一项目</p>
+  </div>
+</div>
+
+<!-- 游戏主界面 -->
+<div id="screen-game" class="screen">
+  <button class="back-btn" data-back="menu">← 退出</button>
+  
+  <div class="game-hud-top">
+    <div class="hud-stat">
+      <span class="hud-label">分数</span>
+      <span class="hud-value" id="hud-score">0</span>
+    </div>
+    <div class="hud-stat level">
+      <span class="hud-label">等级</span>
+      <span class="hud-value level" id="hud-level">1</span>
+      <div class="hud-exp-bar"><span id="hud-exp-fill" style="width:0%"></span></div>
+    </div>
+    <div class="hud-stat">
+      <span class="hud-label">连击</span>
+      <span class="hud-value combo" id="hud-combo">×1</span>
+      <div class="hud-combo-bar"><span id="hud-combo-fill" style="width:0%"></span></div>
+    </div>
+    <div class="hud-stat">
+      <span class="hud-label">护盾</span>
+      <span class="hud-value lives" id="hud-lives">❤❤❤</span>
+    </div>
+    <div class="hud-stat">
+      <span class="hud-label">关卡</span>
+      <span class="hud-value" id="hud-wave">1</span>
+    </div>
+  </div>
+
+  <!-- 主画布 -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- 函数队列事件提示横幅（默认隐藏） -->
+  <div id="event-banner" class="event-banner hidden">
+    <span class="event-banner-icon">✦</span>
+    <span class="event-banner-text">用 <b id="event-banner-fn">XX</b> 函数消灭队列！</span>
+  </div>
+
+  <!-- 函数库面板（中部底端，画布上方） -->
+  <div class="library-bar" id="library-bar">
+    <div class="lib-header">
+      <span class="lib-title">⚡ 已学函数</span>
+      <span class="lib-hint">点击发射 · 各函数有独立冷却</span>
+    </div>
+    <div class="lib-list" id="lib-list">
+      <div class="lib-empty">输入函数发射后，会自动加入函数库</div>
+    </div>
+  </div>
+
+  <!-- 底部输入栏 -->
+  <div class="input-bar">
+    <div class="input-row">
+      <span class="input-prompt" id="input-prompt">y =</span>
+      <input id="func-input" type="text" autocomplete="off" autocorrect="off" 
+             autocapitalize="off" spellcheck="false" 
+             placeholder="例：x^2、sin(x)*3、x^2+y^2=4、x=3">
+      <div class="preset-wrap">
+        <button id="preset-btn" class="preset-btn" type="button" title="预设函数">📚<span class="preset-caret">▾</span></button>
+        <div id="preset-menu" class="preset-menu hidden" role="menu">
+          <div class="preset-section-title">函数</div>
+          <div class="preset-section">
+            <span class="hint-tag" data-snippet="x^2">x²</span>
+            <span class="hint-tag" data-snippet="x^3">x³</span>
+            <span class="hint-tag" data-snippet="sqrt(x)">√x</span>
+            <span class="hint-tag" data-snippet="1/x">1/x</span>
+            <span class="hint-tag" data-snippet="sin(x)">sin</span>
+            <span class="hint-tag" data-snippet="cos(x)">cos</span>
+            <span class="hint-tag" data-snippet="tan(x)">tan</span>
+            <span class="hint-tag" data-snippet="abs(x)">|x|</span>
+            <span class="hint-tag" data-snippet="2^x">2ˣ</span>
+            <span class="hint-tag" data-snippet="log(x)">log</span>
+          </div>
+          <div class="preset-section-title">解析几何</div>
+          <div class="preset-section">
+            <span class="hint-tag" data-snippet="x^2+y^2=4" title="圆">○ 圆</span>
+            <span class="hint-tag" data-snippet="x=3" title="垂直线">┃ x=k</span>
+            <span class="hint-tag" data-snippet="x^2/9+y^2/4=1" title="椭圆">⬭ 椭圆</span>
+            <span class="hint-tag" data-snippet="x^2/9-y^2/4=1" title="双曲线">⋈ 双曲线</span>
+          </div>
+        </div>
+      </div>
+      <button id="fire-btn" class="fire-btn">🚀 发射 (Enter)</button>
+    </div>
+    <div class="error-row">
+      <span class="error-msg" id="error-msg"></span>
+    </div>
+  </div>
+
+  <!-- 暂停按钮 -->
+  <button id="pause-btn" class="pause-btn">⏸</button>
+  <!-- 重置视野按钮 -->
+  <button id="reset-view-btn" class="reset-view-btn" title="重置视野 (R / 双击)">⊕</button>
+</div>
+
+<!-- 暂停遮罩 -->
+<div id="pause-overlay" class="overlay hidden">
+  <div class="pause-panel">
+    <h2>已暂停</h2>
+    <button id="resume-btn" class="action-btn primary">继续游戏</button>
+    <button id="restart-btn" class="action-btn">重新开始</button>
+    <button id="quit-btn" class="action-btn">退出到主菜单</button>
+  </div>
+</div>
+
+<!-- 图鉴弹窗（首次见到新怪时强制弹出） -->
+<div id="codex-overlay" class="overlay hidden">
+  <div class="codex-panel">
+    <div class="codex-icon"><canvas id="codex-icon-canvas" width="120" height="120"></canvas></div>
+    <h2 id="codex-title">新敌人出现</h2>
+    <div class="codex-meta" id="codex-meta"></div>
+    <p id="codex-desc" class="codex-desc"></p>
+    <button id="codex-continue" class="action-btn primary">继续</button>
+  </div>
+</div>
+
+<!-- Game Over -->
+<div id="gameover-overlay" class="overlay hidden">
+  <div class="gameover-panel">
+    <div class="gameover-icon">💥</div>
+    <h2>护盾击穿！</h2>
+    <div class="gameover-stats">
+      <div><span>最终分数</span><b id="gover-score">0</b></div>
+      <div><span>击杀敌人</span><b id="gover-kills">0</b></div>
+      <div><span>最高连击</span><b id="gover-maxcombo">0</b></div>
+      <div><span>到达关卡</span><b id="gover-wave">0</b></div>
+    </div>
+    <p id="gover-best" class="best-msg"></p>
+    <div id="gover-achievements" class="gover-achievements"></div>
+    <div class="gameover-actions">
+      <button id="gover-retry" class="action-btn primary">再来一局</button>
+      <button id="gover-quit" class="action-btn">返回主菜单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 图鉴菜单 -->
+<div id="screen-codex" class="screen">
+  <button class="back-btn" data-back="menu">← 返回</button>
+
+  <div class="codex-screen-header">
+    <h2 class="screen-title">📖 图鉴</h2>
+    <div class="codex-tabs">
+      <button class="codex-tab active" data-tab="enemies">敌人</button>
+      <button class="codex-tab" data-tab="functions">函数</button>
+      <button class="codex-tab" data-tab="effects">效果</button>
+    </div>
+    <p class="screen-sub" id="codex-progress-sub">已解锁 0 / 0 个图鉴条目</p>
+  </div>
+
+  <div class="codex-screen-body">
+    <!-- 左侧列表（卡片网格） -->
+    <div class="codex-list" id="codex-list"></div>
+
+    <!-- 右侧详情 -->
+    <div class="codex-detail" id="codex-detail">
+      <div class="codex-detail-empty">从左侧选择一个条目查看</div>
+    </div>
+  </div>
+</div>
+
+<!-- 设置 -->
+<div id="screen-settings" class="screen">
+  <button class="back-btn" data-back="menu">← 返回</button>
+
+  <div class="settings-header">
+    <h2 class="screen-title">⚙️ 设置</h2>
+  </div>
+
+  <div class="settings-body">
+    <div class="settings-row">
+      <label for="settings-bgm">音乐音量</label>
+      <input type="range" id="settings-bgm" min="0" max="100" value="32">
+      <span class="settings-value" id="settings-bgm-val">32</span>
+    </div>
+    <div class="settings-row">
+      <label for="settings-sfx">音效音量</label>
+      <input type="range" id="settings-sfx" min="0" max="100" value="45">
+      <span class="settings-value" id="settings-sfx-val">45</span>
+    </div>
+    <div class="settings-row settings-row-action">
+      <button id="settings-clear-save" class="menu-btn ghost danger">
+        <span class="btn-icon">🗑️</span>
+        <span class="btn-body">
+          <span class="btn-text">清空存档</span>
+          <span class="btn-sub">清除最高分、图鉴解锁、设置</span>
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast hidden"></div>
+
+<!-- 教程引导（变暗 + 镂空聚焦 + 浮窗） -->
+<div id="tutorial-overlay" class="hidden">
+  <!-- SVG 用于绘制变暗 + 镂空（清晰显示聚焦元素） -->
+  <svg id="tutorial-mask" preserveAspectRatio="none">
+    <defs>
+      <mask id="tutorial-cutout">
+        <rect width="100%" height="100%" fill="white"/>
+        <rect id="tutorial-cutout-rect" x="0" y="0" width="0" height="0" fill="black" rx="10"/>
+      </mask>
+    </defs>
+    <rect width="100%" height="100%" fill="rgba(0,0,0,0.72)" mask="url(#tutorial-cutout)"/>
+    <rect id="tutorial-highlight-rect" x="0" y="0" width="0" height="0"
+          fill="none" stroke="#5dffd6" stroke-width="3" rx="10"
+          style="filter: drop-shadow(0 0 12px #5dffd6);"/>
+  </svg>
+
+  <!-- 浮窗：左侧头像 + 右侧文字 -->
+  <div id="tutorial-dialog">
+    <img id="tutorial-avatar" src="assets/img/lang-hen.png" alt="锒狠"/>
+    <div class="tutorial-body">
+      <div class="tutorial-name">锒狠</div>
+      <div id="tutorial-text" class="tutorial-text"></div>
+      <div class="tutorial-hint" id="tutorial-hint">点击任意位置继续 ▶</div>
+    </div>
+  </div>
+
+  <!-- 跳过教程提示（右下角） -->
+  <div id="tutorial-skip-hint">按 <kbd>T</kbd> 跳过教程</div>
+</div>
+
+<!-- 升级卡牌（升级时弹出，3 张卡选 1） -->
+<div id="upgrade-overlay" class="overlay hidden">
+  <div class="upgrade-panel">
+    <h2 class="upgrade-title" id="upgrade-title">⭐ 等级提升 LV 2</h2>
+    <p class="upgrade-subtitle">选择一项强化效果</p>
+    <div class="upgrade-cards" id="upgrade-cards"></div>
+    <div class="upgrade-rerolls-info" id="upgrade-rerolls-info"></div>
+  </div>
+</div>
+
+<!-- 核心 -->
+<script src="js/core/parser.js"></script>
+<script src="js/core/coords.js"></script>
+<script src="js/core/shape.js"></script>
+<script src="js/core/spawn.js"></script>
+<script src="js/core/library.js"></script>
+<script src="js/core/sound.js"></script>
+<script src="js/core/upgrade.js"></script>
+<script src="js/core/event.js"></script>
+
+<!-- UI -->
+<script src="js/ui/menu.js"></script>
+<script src="js/ui/game.js"></script>
+<script src="js/ui/tutorial.js"></script>
+
+<script src="js/main.js"></script>
+</body>
+</html>
